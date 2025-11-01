@@ -1,26 +1,43 @@
 name: Check IDX IPO and Notify Telegram
 
 on:
-  workflow_dispatch:
+  schedule:
+    - cron: "0 * * * *" # setiap jam (UTC)
+  workflow_dispatch: # bisa dijalankan manual
 
 jobs:
-  check_ipo:
+  check-ipo:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4
 
       - name: Run IDX IPO checker
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python scripts/check_idx.py
+        run: |
+          python scripts/check_idx.py
+
+      - name: Commit updated seen_links.txt
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [[ `git status --porcelain` != "" ]]; then
+            git add seen_links.txt
+            git commit -m "Update seen_links from GitHub Action"
+            git push
+          else
+            echo "✅ No new links to commit."
+          fi
